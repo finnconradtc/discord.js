@@ -1,6 +1,6 @@
 import { ComponentType } from 'discord-api-types/v10';
 import { describe, expect, test } from 'vitest';
-import { ThumbnailBuilder } from '../../../src/components/v2/Thumbnail';
+import { ThumbnailBuilder } from '../../../src/components/v2/Thumbnail.js';
 
 const dummy = {
 	type: ComponentType.Thumbnail as const,
@@ -23,7 +23,7 @@ describe('Thumbnail', () => {
 			const thumbnail = new ThumbnailBuilder();
 
 			thumbnail.setURL(input);
-			expect(() => thumbnail.toJSON()).toThrowError();
+			expect(() => thumbnail.toJSON()).toThrow();
 		});
 	});
 
@@ -51,7 +51,7 @@ describe('Thumbnail', () => {
 			const thumbnail = new ThumbnailBuilder();
 
 			thumbnail.setDescription('a'.repeat(1_025));
-			expect(() => thumbnail.toJSON()).toThrowError();
+			expect(() => thumbnail.toJSON()).toThrow();
 		});
 	});
 

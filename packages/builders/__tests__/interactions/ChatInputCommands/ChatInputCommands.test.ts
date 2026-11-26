@@ -45,15 +45,35 @@ describe('ChatInput Commands', () => {
 	describe('ChatInputCommandBuilder', () => {
 		describe('Builder with no options', () => {
 			test('GIVEN empty builder THEN throw error when calling toJSON', () => {
-				expect(() => getBuilder().toJSON()).toThrowError();
+				expect(() => getBuilder().toJSON()).toThrow();
 			});
 
 			test('GIVEN valid builder THEN does not throw error', () => {
-				expect(() => getBuilder().setName('example').setDescription('Example command').toJSON()).not.toThrowError();
+				expect(() => getBuilder().setName('example').setDescription('Example command').toJSON()).not.toThrow();
 			});
 		});
 
 		describe('Builder with simple options', () => {
+			test.each([undefined, false])('rejects a required option after an optional option (required: %s)', (required) => {
+				const optionalOption = getStringOption().setName('note');
+				if (required !== undefined) optionalOption.setRequired(required);
+
+				const builder = getNamedBuilder()
+					.addStringOptions(optionalOption)
+					.addIntegerOptions(getIntegerOption().setName('minutes').setRequired(true));
+
+				expect(() => builder.toJSON()).toThrow('Required options must be listed before optional options');
+				expect(builder.toJSON(false).options?.map(({ name }) => name)).toEqual(['note', 'minutes']);
+			});
+
+			test('preserves the order of valid required and optional options', () => {
+				const builder = getNamedBuilder()
+					.addIntegerOptions(getIntegerOption().setName('minutes').setRequired(true))
+					.addStringOptions(getStringOption().setName('note'));
+
+				expect(builder.toJSON().options?.map(({ name }) => name)).toEqual(['minutes', 'note']);
+			});
+
 			test('GIVEN valid builder THEN returns type included', () => {
 				expect(getNamedBuilder().toJSON()).includes({ type: ApplicationCommandType.ChatInput });
 			});
@@ -103,14 +123,14 @@ describe('ChatInput Commands', () => {
 							string.setName('iscool').setDescription('Are we cool or what?').setAutocomplete(true),
 						)
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN a builder with invalid autocomplete THEN does throw an error', () => {
 				expect(() =>
 					// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
 					getNamedBuilder().addStringOptions(getStringOption().setAutocomplete('not a boolean')).toJSON(),
-				).toThrowError();
+				).toThrow();
 			});
 
 			test('GIVEN a builder with both choices and autocomplete THEN does throw an error', () => {
@@ -120,7 +140,7 @@ describe('ChatInput Commands', () => {
 							getStringOption().setAutocomplete(true).addChoices({ name: 'Fancy Pants', value: 'fp_1' }),
 						)
 						.toJSON(),
-				).toThrowError();
+				).toThrow();
 
 				expect(() =>
 					getNamedBuilder()
@@ -134,7 +154,7 @@ describe('ChatInput Commands', () => {
 								),
 						)
 						.toJSON(),
-				).toThrowError();
+				).toThrow();
 
 				expect(() =>
 					getNamedBuilder()
@@ -142,7 +162,7 @@ describe('ChatInput Commands', () => {
 							getStringOption().addChoices({ name: 'Fancy Pants', value: 'fp_1' }).setAutocomplete(true),
 						)
 						.toJSON(),
-				).toThrowError();
+				).toThrow();
 			});
 
 			test('GIVEN a builder with valid channel options and channel_types THEN does not throw an error', () => {
@@ -152,124 +172,116 @@ describe('ChatInput Commands', () => {
 							getChannelOption().addChannelTypes(ChannelType.GuildText).addChannelTypes([ChannelType.GuildVoice]),
 						)
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 
 				expect(() => {
 					getNamedBuilder()
 						.addChannelOptions(getChannelOption().addChannelTypes(ChannelType.GuildAnnouncement, ChannelType.GuildText))
 						.toJSON();
-				}).not.toThrowError();
+				}).not.toThrow();
 			});
 
 			test('GIVEN a builder with valid channel options and channel_types THEN does throw an error', () => {
 				expect(() =>
 					// @ts-expect-error: Invalid channel type
 					getNamedBuilder().addChannelOptions(getChannelOption().addChannelTypes(100)).toJSON(),
-				).toThrowError();
+				).toThrow();
 
 				expect(() =>
 					// @ts-expect-error: Invalid channel types
 					getNamedBuilder().addChannelOptions(getChannelOption().addChannelTypes(100, 200)).toJSON(),
-				).toThrowError();
+				).toThrow();
 			});
 
 			test('GIVEN a builder with invalid number min/max options THEN does throw an error', () => {
 				// @ts-expect-error: Invalid max value
-				expect(() => getNamedBuilder().addNumberOptions(getNumberOption().setMaxValue('test')).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addNumberOptions(getNumberOption().setMaxValue('test')).toJSON()).toThrow();
 
 				expect(() =>
 					// @ts-expect-error: Invalid max value
 					getNamedBuilder().addIntegerOptions(getIntegerOption().setMaxValue('test')).toJSON(),
-				).toThrowError();
+				).toThrow();
 
 				// @ts-expect-error: Invalid min value
-				expect(() => getNamedBuilder().addNumberOptions(getNumberOption().setMinValue('test')).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addNumberOptions(getNumberOption().setMinValue('test')).toJSON()).toThrow();
 
 				expect(() =>
 					// @ts-expect-error: Invalid min value
 					getNamedBuilder().addIntegerOptions(getIntegerOption().setMinValue('test')).toJSON(),
-				).toThrowError();
+				).toThrow();
 
-				expect(() => getNamedBuilder().addIntegerOptions(getIntegerOption().setMinValue(1.5)).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addIntegerOptions(getIntegerOption().setMinValue(1.5)).toJSON()).toThrow();
 			});
 
 			test('GIVEN a builder with valid number min/max options THEN does not throw an error', () => {
-				expect(() =>
-					getNamedBuilder().addIntegerOptions(getIntegerOption().setMinValue(1)).toJSON(),
-				).not.toThrowError();
+				expect(() => getNamedBuilder().addIntegerOptions(getIntegerOption().setMinValue(1)).toJSON()).not.toThrow();
 
-				expect(() =>
-					getNamedBuilder().addNumberOptions(getNumberOption().setMinValue(1.5)).toJSON(),
-				).not.toThrowError();
+				expect(() => getNamedBuilder().addNumberOptions(getNumberOption().setMinValue(1.5)).toJSON()).not.toThrow();
 
-				expect(() =>
-					getNamedBuilder().addIntegerOptions(getIntegerOption().setMaxValue(1)).toJSON(),
-				).not.toThrowError();
+				expect(() => getNamedBuilder().addIntegerOptions(getIntegerOption().setMaxValue(1)).toJSON()).not.toThrow();
 
-				expect(() =>
-					getNamedBuilder().addNumberOptions(getNumberOption().setMaxValue(1.5)).toJSON(),
-				).not.toThrowError();
+				expect(() => getNamedBuilder().addNumberOptions(getNumberOption().setMaxValue(1.5)).toJSON()).not.toThrow();
 			});
 
 			test('GIVEN an already built builder THEN does not throw an error', () => {
-				expect(() => getNamedBuilder().addStringOptions(getStringOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addStringOptions(getStringOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addIntegerOptions(getIntegerOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addIntegerOptions(getIntegerOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addNumberOptions(getNumberOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addNumberOptions(getNumberOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addBooleanOptions(getBooleanOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addBooleanOptions(getBooleanOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addUserOptions(getUserOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addUserOptions(getUserOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addChannelOptions(getChannelOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addChannelOptions(getChannelOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addRoleOptions(getRoleOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addRoleOptions(getRoleOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addAttachmentOptions(getAttachmentOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addAttachmentOptions(getAttachmentOption()).toJSON()).not.toThrow();
 
-				expect(() => getNamedBuilder().addMentionableOptions(getMentionableOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addMentionableOptions(getMentionableOption()).toJSON()).not.toThrow();
 			});
 
 			test('GIVEN invalid name THEN throw error', () => {
-				expect(() => getBuilder().setName('TEST_COMMAND').setDescription(':3').toJSON()).toThrowError();
-				expect(() => getBuilder().setName('ĂĂĂĂĂĂ').setDescription(':3').toJSON()).toThrowError();
+				expect(() => getBuilder().setName('TEST_COMMAND').setDescription(':3').toJSON()).toThrow();
+				expect(() => getBuilder().setName('ĂĂĂĂĂĂ').setDescription(':3').toJSON()).toThrow();
 			});
 
 			test('GIVEN valid names THEN does not throw error', () => {
-				expect(() => getBuilder().setName('hi_there').setDescription(':3').toJSON()).not.toThrowError();
-				expect(() => getBuilder().setName('o_comandă').setDescription(':3').toJSON()).not.toThrowError();
-				expect(() => getBuilder().setName('どうも').setDescription(':3').toJSON()).not.toThrowError();
+				expect(() => getBuilder().setName('hi_there').setDescription(':3').toJSON()).not.toThrow();
+				expect(() => getBuilder().setName('o_comandă').setDescription(':3').toJSON()).not.toThrow();
+				expect(() => getBuilder().setName('どうも').setDescription(':3').toJSON()).not.toThrow();
 			});
 
 			test('GIVEN invalid returns for builder THEN throw error', () => {
 				// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
-				expect(() => getNamedBuilder().addBooleanOptions(true).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addBooleanOptions(true).toJSON()).toThrow();
 
 				// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
-				expect(() => getNamedBuilder().addBooleanOptions(null).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addBooleanOptions(null).toJSON()).toThrow();
 
 				// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
-				expect(() => getNamedBuilder().addBooleanOptions(undefined).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addBooleanOptions(undefined).toJSON()).toThrow();
 
 				expect(() =>
 					getNamedBuilder()
 						// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
 						.addBooleanOptions(() => ChatInputCommandStringOption)
 						.toJSON(),
-				).toThrowError();
+				).toThrow();
 				expect(() =>
 					getNamedBuilder()
 						// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
 						.addBooleanOptions(() => new Collection())
 						.toJSON(),
-				).toThrowError();
+				).toThrow();
 			});
 
 			test('GIVEN an option that is autocompletable and has choices, THEN passing nothing to setChoices should not throw an error', () => {
 				expect(() =>
 					getNamedBuilder().addStringOptions(getStringOption().setAutocomplete(true).setChoices()).toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN an option that is autocompletable, THEN setting choices should throw an error', () => {
@@ -277,7 +289,7 @@ describe('ChatInput Commands', () => {
 					getNamedBuilder()
 						.addStringOptions(getStringOption().setAutocomplete(true).setChoices({ name: 'owo', value: 'uwu' }))
 						.toJSON(),
-				).toThrowError();
+				).toThrow();
 			});
 
 			test('GIVEN an option, THEN setting choices should not throw an error', () => {
@@ -285,11 +297,11 @@ describe('ChatInput Commands', () => {
 					getNamedBuilder()
 						.addStringOptions(getStringOption().setChoices({ name: 'owo', value: 'uwu' }))
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN valid builder with NSFW, THEN does not throw error', () => {
-				expect(() => getNamedBuilder().setName('foo').setDescription('foo').setNSFW(true).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().setName('foo').setDescription('foo').setNSFW(true).toJSON()).not.toThrow();
 			});
 		});
 
@@ -301,7 +313,7 @@ describe('ChatInput Commands', () => {
 							group.setName('group').setDescription('Group us together!').addSubcommands(getSubcommand()),
 						)
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN builder with subcommand THEN does not throw error', () => {
@@ -309,7 +321,7 @@ describe('ChatInput Commands', () => {
 					getNamedBuilder()
 						.addSubcommands((subcommand) => subcommand.setName('boop').setDescription('Boops a fellow nerd (you)'))
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN builder with subcommand THEN has regular ChatInput command fields', () => {
@@ -321,44 +333,44 @@ describe('ChatInput Commands', () => {
 						.addSubcommands((option) => option.setName('no').setDescription('no'))
 						.setDefaultMemberPermissions(1n)
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN builder with already built subcommand group THEN does not throw error', () => {
 				expect(() =>
 					getNamedBuilder().addSubcommandGroups(getSubcommandGroup().addSubcommands(getSubcommand())).toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN builder with already built subcommand THEN does not throw error', () => {
-				expect(() => getNamedBuilder().addSubcommands(getSubcommand()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addSubcommands(getSubcommand()).toJSON()).not.toThrow();
 			});
 
 			test('GIVEN builder with already built subcommand with options THEN does not throw error', () => {
 				expect(() =>
 					getNamedBuilder().addSubcommands(getSubcommand().addBooleanOptions(getBooleanOption())).toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN builder with a subcommand that tries to add an invalid result THEN throw error', () => {
 				expect(() =>
 					// @ts-expect-error: Checking if check works JS-side too
 					getNamedBuilder().addSubcommands(getSubcommand()).addIntegerOptions(getInteger()).toJSON(),
-				).toThrowError();
+				).toThrow();
 			});
 
 			test('GIVEN no valid return for an addSubcommand(Group) method THEN throw error', () => {
 				// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
-				expect(() => getNamedBuilder().addSubcommands(getSubcommandGroup()).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().addSubcommands(getSubcommandGroup()).toJSON()).toThrow();
 			});
 		});
 
 		describe('Subcommand group builder', () => {
 			test('GIVEN no valid subcommand THEN throw error', () => {
-				expect(() => getSubcommandGroup().addSubcommands().toJSON()).toThrowError();
+				expect(() => getSubcommandGroup().addSubcommands().toJSON()).toThrow();
 
 				// @ts-expect-error: Checking if not providing anything, or an invalid return type causes an error
-				expect(() => getSubcommandGroup().addSubcommands(getSubcommandGroup()).toJSON()).toThrowError();
+				expect(() => getSubcommandGroup().addSubcommands(getSubcommandGroup()).toJSON()).toThrow();
 			});
 
 			test('GIVEN a valid subcommand THEN does not throw an error', () => {
@@ -366,13 +378,23 @@ describe('ChatInput Commands', () => {
 					getSubcommandGroup()
 						.addSubcommands((sub) => sub.setName('sub').setDescription('Testing 123'))
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 		});
 
 		describe('Subcommand builder', () => {
+			test('rejects a required option after an optional option in a nested subcommand', () => {
+				const subcommand = getSubcommand()
+					.addStringOptions(getStringOption().setName('note'))
+					.addIntegerOptions(getIntegerOption().setName('minutes').setRequired(true));
+				const builder = getNamedBuilder().addSubcommands(subcommand);
+
+				expect(() => subcommand.toJSON()).toThrow('Required options must be listed before optional options');
+				expect(() => builder.toJSON()).toThrow('Required options must be listed before optional options');
+			});
+
 			test('GIVEN a valid subcommand with options THEN does not throw error', () => {
-				expect(() => getSubcommand().addBooleanOptions(getBooleanOption()).toJSON()).not.toThrowError();
+				expect(() => getSubcommand().addBooleanOptions(getBooleanOption()).toJSON()).not.toThrow();
 			});
 		});
 
@@ -383,7 +405,7 @@ describe('ChatInput Commands', () => {
 						.addSubcommands(getSubcommand())
 						.addSubcommandGroups(getSubcommandGroup().addSubcommands(getSubcommand()))
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 		});
 
@@ -395,19 +417,19 @@ describe('ChatInput Commands', () => {
 			};
 
 			test('GIVEN valid name localizations THEN does not throw error', () => {
-				expect(() => getNamedBuilder().setNameLocalization(Locale.EnglishUS, 'foobar').toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().setNameLocalization(Locale.EnglishUS, 'foobar').toJSON()).not.toThrow();
 				expect(() =>
 					getNamedBuilder()
 						.setNameLocalizations({ [Locale.EnglishUS]: 'foobar' })
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN invalid name localizations THEN does throw error', () => {
 				// @ts-expect-error: Invalid localization
-				expect(() => getNamedBuilder().setNameLocalization('en-U', 'foobar').toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setNameLocalization('en-U', 'foobar').toJSON()).toThrow();
 				// @ts-expect-error: Invalid localization
-				expect(() => getNamedBuilder().setNameLocalizations({ 'en-U': 'foobar' }).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setNameLocalizations({ 'en-U': 'foobar' }).toJSON()).toThrow();
 			});
 
 			test('GIVEN valid name localizations THEN valid data is stored', () => {
@@ -426,21 +448,19 @@ describe('ChatInput Commands', () => {
 			});
 
 			test('GIVEN valid description localizations THEN does not throw error', () => {
-				expect(() =>
-					getNamedBuilder().setDescriptionLocalization(Locale.EnglishUS, 'foobar').toJSON(),
-				).not.toThrowError();
+				expect(() => getNamedBuilder().setDescriptionLocalization(Locale.EnglishUS, 'foobar').toJSON()).not.toThrow();
 				expect(() =>
 					getNamedBuilder()
 						.setDescriptionLocalizations({ [Locale.EnglishUS]: 'foobar' })
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN invalid description localizations THEN does throw error', () => {
 				// @ts-expect-error: Invalid localization description
-				expect(() => getNamedBuilder().setDescriptionLocalization('en-U', 'foobar').toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setDescriptionLocalization('en-U', 'foobar').toJSON()).toThrow();
 				// @ts-expect-error: Invalid localization description
-				expect(() => getNamedBuilder().setDescriptionLocalizations({ 'en-U': 'foobar' }).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setDescriptionLocalizations({ 'en-U': 'foobar' }).toJSON()).toThrow();
 			});
 
 			test('GIVEN valid description localizations THEN valid data is stored', () => {
@@ -466,7 +486,7 @@ describe('ChatInput Commands', () => {
 
 		describe('permissions', () => {
 			test('GIVEN valid permission string THEN does not throw error', () => {
-				expect(() => getNamedBuilder().setDefaultMemberPermissions('1').toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().setDefaultMemberPermissions('1').toJSON()).not.toThrow();
 			});
 
 			test('GIVEN valid permission bitfield THEN does not throw error', () => {
@@ -474,24 +494,24 @@ describe('ChatInput Commands', () => {
 					getNamedBuilder()
 						.setDefaultMemberPermissions(PermissionFlagsBits.AddReactions | PermissionFlagsBits.AttachFiles)
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN null permissions THEN does not throw error', () => {
-				expect(() => getNamedBuilder().clearDefaultMemberPermissions().toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().clearDefaultMemberPermissions().toJSON()).not.toThrow();
 			});
 
 			test('GIVEN invalid inputs THEN does throw error', () => {
-				expect(() => getNamedBuilder().setDefaultMemberPermissions('1.1').toJSON()).toThrowError();
-				expect(() => getNamedBuilder().setDefaultMemberPermissions(1.1).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setDefaultMemberPermissions('1.1').toJSON()).toThrow();
+				expect(() => getNamedBuilder().setDefaultMemberPermissions(1.1).toJSON()).toThrow();
 			});
 
 			test('GIVEN valid permission with options THEN does not throw error', () => {
 				expect(() =>
 					getNamedBuilder().addBooleanOptions(getBooleanOption()).setDefaultMemberPermissions('1').toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 
-				expect(() => getNamedBuilder().addChannelOptions(getChannelOption()).toJSON()).not.toThrowError();
+				expect(() => getNamedBuilder().addChannelOptions(getChannelOption()).toJSON()).not.toThrow();
 			});
 		});
 
@@ -499,19 +519,19 @@ describe('ChatInput Commands', () => {
 			test('GIVEN a builder with valid contexts THEN does not throw an error', () => {
 				expect(() =>
 					getNamedBuilder().setContexts([InteractionContextType.Guild, InteractionContextType.BotDM]).toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 
 				expect(() =>
 					getNamedBuilder().setContexts(InteractionContextType.Guild, InteractionContextType.BotDM).toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN a builder with invalid contexts THEN does throw an error', () => {
 				// @ts-expect-error: Invalid contexts
-				expect(() => getNamedBuilder().setContexts(999).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setContexts(999).toJSON()).toThrow();
 
 				// @ts-expect-error: Invalid contexts
-				expect(() => getNamedBuilder().setContexts([999, 998]).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setContexts([999, 998]).toJSON()).toThrow();
 			});
 		});
 
@@ -521,21 +541,21 @@ describe('ChatInput Commands', () => {
 					getNamedBuilder()
 						.setIntegrationTypes([ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall])
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 
 				expect(() =>
 					getNamedBuilder()
 						.setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
 						.toJSON(),
-				).not.toThrowError();
+				).not.toThrow();
 			});
 
 			test('GIVEN a builder with invalid integration types THEN does throw an error', () => {
 				// @ts-expect-error: Invalid integration types
-				expect(() => getNamedBuilder().setIntegrationTypes(999).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setIntegrationTypes(999).toJSON()).toThrow();
 
 				// @ts-expect-error: Invalid integration types
-				expect(() => getNamedBuilder().setIntegrationTypes([999, 998]).toJSON()).toThrowError();
+				expect(() => getNamedBuilder().setIntegrationTypes([999, 998]).toJSON()).toThrow();
 			});
 		});
 	});

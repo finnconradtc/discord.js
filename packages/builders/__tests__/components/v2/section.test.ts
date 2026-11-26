@@ -1,9 +1,9 @@
 import { ButtonStyle, ComponentType } from 'discord-api-types/v10';
 import { describe, expect, test, vi } from 'vitest';
-import { PrimaryButtonBuilder } from '../../../src/components/button/CustomIdButton';
-import { SectionBuilder } from '../../../src/components/v2/Section';
-import { TextDisplayBuilder } from '../../../src/components/v2/TextDisplay';
-import { ThumbnailBuilder } from '../../../src/components/v2/Thumbnail';
+import { PrimaryButtonBuilder } from '../../../src/components/button/CustomIdButton.js';
+import { SectionBuilder } from '../../../src/components/v2/Section.js';
+import { TextDisplayBuilder } from '../../../src/components/v2/TextDisplay.js';
+import { ThumbnailBuilder } from '../../../src/components/v2/Thumbnail.js';
 
 describe('Section', () => {
 	describe('Validation', () => {
@@ -24,7 +24,7 @@ describe('Section', () => {
 				.addTextDisplayComponents(new TextDisplayBuilder().setContent('Hello world'))
 				.setThumbnailAccessory(new ThumbnailBuilder());
 
-			expect(() => section.toJSON()).toThrowError();
+			expect(() => section.toJSON()).toThrow();
 		});
 
 		test('GIVEN an invalid button accessory THEN the section rejects it', () => {
@@ -32,24 +32,24 @@ describe('Section', () => {
 				.addTextDisplayComponents(new TextDisplayBuilder().setContent('Hello world'))
 				.setPrimaryButtonAccessory(new PrimaryButtonBuilder().setCustomId('click_me'));
 
-			expect(() => section.toJSON()).toThrowError();
+			expect(() => section.toJSON()).toThrow();
 		});
 
 		test('GIVEN empty section builder THEN throws error on toJSON', () => {
 			const section = new SectionBuilder();
-			expect(() => section.toJSON()).toThrowError();
+			expect(() => section.toJSON()).toThrow();
 		});
 
 		test('GIVEN section with text components but no accessory THEN throws error on toJSON', () => {
 			const section = new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent('Hello world'));
-			expect(() => section.toJSON()).toThrowError();
+			expect(() => section.toJSON()).toThrow();
 		});
 
 		test('GIVEN section with accessory but no text components THEN throws error on toJSON', () => {
 			const section = new SectionBuilder().setThumbnailAccessory(
 				new ThumbnailBuilder().setURL('https://example.com/image.png'),
 			);
-			expect(() => section.toJSON()).toThrowError();
+			expect(() => section.toJSON()).toThrow();
 		});
 	});
 

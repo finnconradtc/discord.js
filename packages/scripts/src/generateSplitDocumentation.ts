@@ -138,43 +138,64 @@ function resolveCanonicalReference(
 		canonicalReference.symbol?.componentPath &&
 		canonicalReference.symbol.meaning
 	)
-		return {
-			package: canonicalReference.source.packageName,
-			unscopedPackage: canonicalReference.source.unscopedPackageName,
-			item: {
-				kind: mapMeaningToKind(canonicalReference.symbol.meaning as unknown as Meaning),
-				displayName: canonicalReference.symbol.componentPath.component.toString(),
-				containerKey: `|${
-					canonicalReference.symbol.meaning
-				}|${canonicalReference.symbol.componentPath.component.toString()}`,
-				getAssociatedEntryPoint() {
-					return canonicalReference.source as ModuleSource;
+		if (canonicalReference.symbol.meaning === Meaning.Member && 'parent' in canonicalReference.symbol.componentPath) {
+			const meaning = canonicalReference.symbol.componentPath.navigation === '.' ? Meaning.Enum : Meaning.Class;
+			return {
+				package: canonicalReference.source.packageName,
+				unscopedPackage: canonicalReference.source.unscopedPackageName,
+				item: {
+					kind: mapMeaningToKind(canonicalReference.symbol.meaning),
+					displayName: canonicalReference.symbol.componentPath.component.toString(),
+					containerKey: `|${
+						canonicalReference.symbol.meaning
+					}|${canonicalReference.symbol.componentPath.component.toString()}`,
+					parent: {
+						kind: mapMeaningToKind(meaning),
+						displayName: canonicalReference.symbol.componentPath.parent.component.toString(),
+					},
+					getAssociatedEntryPoint() {
+						return canonicalReference.source as ModuleSource;
+					},
 				},
-			},
-			// eslint-disable-next-line unicorn/better-regex
-			version: apiPackage?.dependencies?.[canonicalReference.source.packageName]?.replace(/[~^]/, ''),
-		};
+				version: apiPackage?.dependencies?.[canonicalReference.source.packageName]?.replace(/[~^]/, ''),
+			};
+		} else
+			return {
+				package: canonicalReference.source.packageName,
+				unscopedPackage: canonicalReference.source.unscopedPackageName,
+				item: {
+					kind: mapMeaningToKind(canonicalReference.symbol.meaning),
+					displayName: canonicalReference.symbol.componentPath.component.toString(),
+					containerKey: `|${
+						canonicalReference.symbol.meaning
+					}|${canonicalReference.symbol.componentPath.component.toString()}`,
+					getAssociatedEntryPoint() {
+						return canonicalReference.source as ModuleSource;
+					},
+				},
+				version: apiPackage?.dependencies?.[canonicalReference.source.packageName]?.replace(/[~^]/, ''),
+			};
 	else if (
 		'memberReferences' in canonicalReference &&
 		canonicalReference.memberReferences.length &&
 		canonicalReference.memberReferences[0]?.memberIdentifier &&
 		canonicalReference.memberReferences[0]?.selector?.selectorKind === SelectorKind.System
 	) {
-		const member = canonicalReference.memberReferences[0]!;
+		const member = canonicalReference.memberReferences[0];
 		return {
 			package: canonicalReference.packageName?.replace('@discordjs/', ''),
 			item: {
 				kind: member.selector!.selector,
-				displayName: member.memberIdentifier!.identifier,
-				containerKey: `|${member.selector!.selector}|${member.memberIdentifier!.identifier}`,
-				members: canonicalReference.memberReferences
-					.slice(1)
-					.map((member) => ({ kind: member.kind, displayName: member.memberIdentifier!.identifier! })),
+				displayName: canonicalReference.memberReferences.at(-1)!.memberIdentifier!.identifier,
+				containerKey: `|${member.selector!.selector}|${canonicalReference.memberReferences.at(-1)!.memberIdentifier!.identifier}`,
+				parent:
+					canonicalReference.memberReferences.length > 1
+						? { kind: member.selector!.selector, displayName: member.memberIdentifier!.identifier }
+						: undefined,
 				getAssociatedEntryPoint() {
 					return canonicalReference;
 				},
 			},
-			// eslint-disable-next-line unicorn/better-regex
 			version: apiPackage?.dependencies?.[canonicalReference.packageName ?? '']?.replace(/[~^]/, ''),
 		};
 	}
@@ -225,7 +246,7 @@ interface ApiItemLike {
 
 function resolveItemURI(item: ApiItemLike, entryPoint?: ApiEntryPoint): string {
 	const actualEntryPoint = entryPoint ?? item.getAssociatedEntryPoint?.();
-	return `${actualEntryPoint?.importPath ? `${actualEntryPoint.importPath}/` : ''}${
+	return `${actualEntryPoint?.importPath ? `${actualEntryPoint.importPath.replace(/^\//, '')}/` : ''}${
 		!item.parent || item.parent.kind === ApiItemKind.EntryPoint
 			? `${item.displayName}:${item.kind}`
 			: `${item.parent.displayName}:${item.parent.kind}#${item.displayName}`
@@ -358,7 +379,10 @@ function itemTsDoc(item: DocNode, apiItem: ApiItem) {
 
 					return {
 						kind: DocNodeKind.LinkTag,
-						text: linkText ?? foundItem?.displayName ?? resolved!.item.displayName,
+						text:
+							linkText ??
+							foundItem?.displayName ??
+							[resolved?.item.parent?.displayName, resolved!.item.displayName].filter(Boolean).join('.'),
 						uri: resolveItemURI(foundItem ?? resolved!.item),
 						resolvedPackage: {
 							packageName: resolved?.package ?? apiItem.getAssociatedPackage()?.displayName.replace('@discordjs/', ''),
@@ -544,8 +568,7 @@ function resolveFileUrl(item: ApiDeclaredItem) {
 		const version =
 			dir?.split('/').at(-1) === 'main'
 				? 'main'
-				: // eslint-disable-next-line unicorn/better-regex
-					item.getAssociatedPackage()?.dependencies?.[`${prefix}${pkgName}`]?.replace(/[~^]/, '');
+				: item.getAssociatedPackage()?.dependencies?.[`${prefix}${pkgName}`]?.replace(/[~^]/, '');
 
 		// https://github.com/discordjs/discord.js/tree/main/packages/builders/dist/index.d.ts
 		let currentItem = item;
@@ -953,7 +976,6 @@ function itemEnum(item: ApiEnum) {
 }
 
 function memberKind(member: ApiItem | null) {
-	// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
 	switch (member?.kind) {
 		case 'Class': {
 			const classMember = member as ApiClass;
@@ -1060,7 +1082,6 @@ export async function generateSplitDocumentation({
 			for (const entry of entries) {
 				const members = entry.members
 					.filter((item) => {
-						// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
 						switch (item.kind) {
 							case ApiItemKind.Function:
 								return (item as ApiFunction).overloadIndex === 1;

@@ -1,6 +1,6 @@
 import { ComponentType } from 'discord-api-types/v10';
 import { describe, expect, test } from 'vitest';
-import { FileBuilder } from '../../../src/components/v2/File';
+import { FileBuilder } from '../../../src/components/v2/File.js';
 
 const dummy = {
 	type: ComponentType.File as const,
@@ -25,7 +25,7 @@ describe('File', () => {
 			const file = new FileBuilder();
 			file.setURL('https://google.com');
 
-			expect(() => file.toJSON()).toThrowError();
+			expect(() => file.toJSON()).toThrow();
 		});
 	});
 

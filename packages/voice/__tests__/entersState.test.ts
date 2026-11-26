@@ -1,8 +1,8 @@
 import { EventEmitter } from 'node:events';
 import process from 'node:process';
 import { describe, test, expect, vitest, beforeEach } from 'vitest';
-import { VoiceConnectionStatus, type VoiceConnection } from '../src/VoiceConnection';
 import { entersState } from '../src/util/entersState';
+import { VoiceConnectionStatus, type VoiceConnection } from '../src/VoiceConnection';
 
 function createFakeVoiceConnection(status = VoiceConnectionStatus.Signalling) {
 	const vc = new EventEmitter() as any;
@@ -27,7 +27,7 @@ describe('entersState', () => {
 		const vc = createFakeVoiceConnection();
 		const promise = entersState(vc, VoiceConnectionStatus.Ready, 1_000);
 		vitest.runAllTimers();
-		await expect(promise).rejects.toThrowError();
+		await expect(promise).rejects.toThrow();
 	});
 
 	test('Returns the target once the state has been entered before signal is aborted', async () => {
@@ -44,7 +44,7 @@ describe('entersState', () => {
 		const ac = new AbortController();
 		const promise = entersState(vc, VoiceConnectionStatus.Ready, ac.signal);
 		ac.abort();
-		await expect(promise).rejects.toThrowError();
+		await expect(promise).rejects.toThrow();
 	});
 
 	test('Resolves immediately when target already in desired state', async () => {
